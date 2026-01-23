@@ -116,6 +116,23 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   // 创建主View
   private void setView(View view, Device device, boolean isExpanded, int groupPosition) {
     ItemDevicesItemBinding devicesItemBinding = (ItemDevicesItemBinding) view.getTag();
+    // --- 【新增：分组标题显示逻辑】 ---
+    // 1. 获取当前设备的分组名
+    String currentGroup = device.groupName == null ? "默认分组" : device.groupName;
+    // 2. 判断是否需要显示标题：如果是第一项，或当前组名与前一项不同
+    if (groupPosition == 0) {
+        devicesItemBinding.tvGroupHeader.setVisibility(View.VISIBLE);
+        devicesItemBinding.tvGroupHeader.setText(currentGroup);
+    } else {
+        Device prevDevice = devicesList.get(groupPosition - 1);
+        String prevGroup = prevDevice.groupName == null ? "默认分组" : prevDevice.groupName;
+        if (!currentGroup.equals(prevGroup)) {
+            devicesItemBinding.tvGroupHeader.setVisibility(View.VISIBLE);
+            devicesItemBinding.tvGroupHeader.setText(currentGroup);
+        } else {
+            devicesItemBinding.tvGroupHeader.setVisibility(View.GONE);
+        }
+    }
     // 设置展开图标
     devicesItemBinding.deviceExpand.setRotation(isExpanded ? 270 : 180);
     // 设置卡片值
