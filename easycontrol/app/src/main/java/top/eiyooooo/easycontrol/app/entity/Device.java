@@ -5,6 +5,7 @@ public class Device {
   public static final int TYPE_LINK = 2;
 
   public final String uuid;
+  public String groupName;
   public final int type;
   public String name;
   public String address;
@@ -69,7 +70,8 @@ public class Device {
                 int small_l_p_x, int small_l_p_y, int small_l_p_width, int small_l_p_height,
                 int small_l_l_x, int small_l_l_y, int small_l_l_width, int small_l_l_height,
                 int small_free_x, int small_free_y, int small_free_width, int small_free_height,
-                int mini_y) {
+                int mini_y,
+                String groupName) {
     this.uuid = uuid;
     this.type = type;
     this.name = name;
@@ -107,6 +109,7 @@ public class Device {
     this.small_free_width = small_free_width;
     this.small_free_height = small_free_height;
     this.mini_y = mini_y;
+    this.groupName = groupName;
   }
 
   public Device(String uuid, int type) {
@@ -150,10 +153,11 @@ public class Device {
     target.small_free_width = source.small_free_width;
     target.small_free_height = source.small_free_height;
     target.mini_y = source.mini_y;
+    target.groupName = source.groupName;
   }
 
   public static Device getDefaultDevice(String uuid, int type) {
-    return new Device(uuid, type, uuid, "", "", AppData.setting.getDefaultIsAudio(), AppData.setting.getDefaultMaxSize(), AppData.setting.getDefaultMaxFps(), AppData.setting.getDefaultMaxVideoBit(), AppData.setting.getDefaultSetResolution(), AppData.setting.getDefaultFull(), AppData.setting.getDefaultUseH265(), AppData.setting.getDefaultUseOpus(), false, AppData.setting.getDefaultClipboardSync(), AppData.setting.getDefaultNightModeSync(), SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT,MINI_Y);
+    return new Device(uuid, type, uuid, "", "", AppData.setting.getDefaultIsAudio(), AppData.setting.getDefaultMaxSize(), AppData.setting.getDefaultMaxFps(), AppData.setting.getDefaultMaxVideoBit(), AppData.setting.getDefaultSetResolution(), AppData.setting.getDefaultFull(), AppData.setting.getDefaultUseH265(), AppData.setting.getDefaultUseOpus(), false, AppData.setting.getDefaultClipboardSync(), AppData.setting.getDefaultNightModeSync(), SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, SMALL_X, SMALL_Y, SMALL_WIDTH, SMALL_HEIGHT, MINI_Y, "默认分组");
   }
 
   public boolean isNormalDevice() {
