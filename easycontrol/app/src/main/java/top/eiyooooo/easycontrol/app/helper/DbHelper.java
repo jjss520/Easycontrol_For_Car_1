@@ -16,7 +16,8 @@ import top.eiyooooo.easycontrol.app.entity.MonitorEvent;
 public class DbHelper extends SQLiteOpenHelper {
 
   private static final String dataBaseName = "app.db";
-  private static final int version = 19;
+  // 更新版本号至 20
+  private static final int version = 20;
   private final String tableName = "DevicesDb";
   private final String monitorTableName = "MonitorEventsDb";
 
@@ -26,23 +27,27 @@ public class DbHelper extends SQLiteOpenHelper {
 
   @Override
   public void onCreate(SQLiteDatabase db) {
-    db.execSQL("CREATE TABLE " + tableName + " (\n" + "\t uuid text PRIMARY KEY,\n" + "\t type integer,\n" + "\t name text,\n" + "\t address text,\n" + "\t specified_app text,\n" + "\t isAudio integer,\n" + "\t maxSize integer,\n" + "\t maxFps integer,\n" + "\t maxVideoBit integer,\n" + "\t setResolution integer,\n" + "\t defaultFull integer,\n" + "\t useH265 integer,\n" + "\t useOpus integer,\n" + "\t connectOnStart integer,\n" + "\t clipboardSync integer,\n" + "\t nightModeSync integer,\n" + "\t small_p_p_x integer,\n" + "\t small_p_p_y integer,\n" + "\t small_p_p_width integer,\n" + "\t small_p_p_height integer,\n" + "\t small_p_l_x integer,\n" + "\t small_p_l_y integer,\n" + "\t small_p_l_width integer,\n" + "\t small_p_l_height integer,\n" + "\t small_l_p_x integer,\n" + "\t small_l_p_y integer,\n" + "\t small_l_p_width integer,\n" + "\t small_l_p_height integer,\n" + "\t small_l_l_x integer,\n" + "\t small_l_l_y integer,\n" + "\t small_l_l_width integer,\n" + "\t small_l_l_height integer,\n" + "\t small_free_x integer,\n" + "\t small_free_y integer,\n" + "\t small_free_width integer,\n" + "\t small_free_height integer,\n" + "\t mini_y integer\n" + ");");
+    // 在建表语句最后增加 group_name text
+    db.execSQL("CREATE TABLE " + tableName + " (\n" + "\t uuid text PRIMARY KEY,\n" + "\t type integer,\n" + "\t name text,\n" + "\t address text,\n" + "\t specified_app text,\n" + "\t isAudio integer,\n" + "\t maxSize integer,\n" + "\t maxFps integer,\n" + "\t maxVideoBit integer,\n" + "\t setResolution integer,\n" + "\t defaultFull integer,\n" + "\t useH265 integer,\n" + "\t useOpus integer,\n" + "\t connectOnStart integer,\n" + "\t clipboardSync integer,\n" + "\t nightModeSync integer,\n" + "\t small_p_p_x integer,\n" + "\t small_p_p_y integer,\n" + "\t small_p_p_width integer,\n" + "\t small_p_p_height integer,\n" + "\t small_p_l_x integer,\n" + "\t small_p_l_y integer,\n" + "\t small_p_l_width integer,\n" + "\t small_p_l_height integer,\n" + "\t small_l_p_x integer,\n" + "\t small_l_p_y integer,\n" + "\t small_l_p_width integer,\n" + "\t small_l_p_height integer,\n" + "\t small_l_l_x integer,\n" + "\t small_l_l_y integer,\n" + "\t small_l_l_width integer,\n" + "\t small_l_l_height integer,\n" + "\t small_free_x integer,\n" + "\t small_free_y integer,\n" + "\t small_free_width integer,\n" + "\t small_free_height integer,\n" + "\t mini_y integer,\n" + "\t group_name text\n" + ");");
     db.execSQL("CREATE TABLE IF NOT EXISTS " + monitorTableName + " (\n" + "\t uuid text PRIMARY KEY,\n" + " packageName text,\n" + " className text,\n" + " eventType integer,\n" + " responseType" + " integer\n" + ");");
   }
 
   @SuppressLint("Range")
   @Override
   public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-    if (oldVersion < version) {
-      // 获取旧数据
+    if (oldVersion < 20) {
+      // 如果是从旧版本升级，直接添加 group_name 列
+      try {
+        db.execSQL("ALTER TABLE " + tableName + " ADD COLUMN group_name TEXT DEFAULT '默认分组'");
+      } catch (Exception ignored) {
+      }
+    }
+    // 保留原有的升级逻辑作为兜底
+    if (oldVersion < 19) {
       ArrayList<Device> devices = getAll(db);
-      // 修改表名
       db.execSQL("alter table " + tableName + " rename to tempTable");
-      // 新建新表
       onCreate(db);
-      // 将数据搬移至新表
       for (Device device : devices) db.insert(tableName, null, getValues(device));
-      // 删除旧表
       db.execSQL("drop table tempTable");
     }
   }
@@ -166,6 +171,8 @@ public class DbHelper extends SQLiteOpenHelper {
     values.put("small_free_width", device.small_free_width);
     values.put("small_free_height", device.small_free_height);
     values.put("mini_y", device.mini_y);
+    // 写入分组名称
+    values.put("group_name", device.groupName);
     return values;
   }
 
@@ -208,7 +215,9 @@ public class DbHelper extends SQLiteOpenHelper {
       cursor.getColumnIndex("small_free_y") == -1 ? Device.SMALL_Y : cursor.getInt(cursor.getColumnIndex("small_free_y")),
       cursor.getColumnIndex("small_free_width") == -1 ? Device.SMALL_WIDTH : cursor.getInt(cursor.getColumnIndex("small_free_width")),
       cursor.getColumnIndex("small_free_height") == -1 ? Device.SMALL_HEIGHT : cursor.getInt(cursor.getColumnIndex("small_free_height")),
-      cursor.getColumnIndex("mini_y") == -1 ? Device.MINI_Y : cursor.getInt(cursor.getColumnIndex("mini_y"))
+      cursor.getColumnIndex("mini_y") == -1 ? Device.MINI_Y : cursor.getInt(cursor.getColumnIndex("mini_y")),
+      // 读取分组名称，如果不存在则返回默认值
+      cursor.getColumnIndex("group_name") == -1 ? "默认分组" : cursor.getString(cursor.getColumnIndex("group_name"))
     );
   }
 }
