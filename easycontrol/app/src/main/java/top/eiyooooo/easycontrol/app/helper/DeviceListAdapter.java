@@ -16,7 +16,9 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +41,8 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   private final ExpandableListView expandableListView;
   public static boolean startedDefault = false;
 
+  // 【新增】记录被折叠的分组名称
+  private final Set<String> collapsedGroups = new HashSet<>();
 
   public DeviceListAdapter(Context c, ExpandableListView expandableListView) {
     this.expandableListView = expandableListView;
@@ -68,12 +72,12 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
 
   @Override
   public long getGroupId(int groupPosition) {
-    return 0;
+    return groupPosition;
   }
 
   @Override
   public long getChildId(int groupPosition, int childPosition) {
-    return 0;
+    return childPosition;
   }
 
   @Override
@@ -88,7 +92,6 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
       convertView = devicesItemBinding.getRoot();
       convertView.setTag(devicesItemBinding);
     }
-    // 获取设备
     Device device = devicesList.get(groupPosition);
     if (device.connection == -1) checkConnection(device);
     setView(convertView, device, isExpanded, groupPosition);
@@ -102,7 +105,6 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
       convertView = devicesItemDetailBinding.getRoot();
       convertView.setTag(devicesItemDetailBinding);
     }
-    // 获取设备
     Device device = devicesList.get(groupPosition);
     setChildView(convertView, device);
     return convertView;
@@ -113,29 +115,44 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
     return false;
   }
 
-  // 创建主View
   private void setView(View view, Device device, boolean isExpanded, int groupPosition) {
     ItemDevicesItemBinding devicesItemBinding = (ItemDevicesItemBinding) view.getTag();
-    // --- 【新增：分组标题显示逻辑】 ---
-    // 1. 获取当前设备的分组名
+    
+    // --- 【修改：分组显示逻辑】 ---
     String currentGroup = device.groupName == null ? "默认分组" : device.groupName;
-    // 2. 判断是否需要显示标题：如果是第一项，或当前组名与前一项不同
+    boolean isFirstInGroup = false;
+    
     if (groupPosition == 0) {
-        devicesItemBinding.tvGroupHeader.setVisibility(View.VISIBLE);
-        devicesItemBinding.tvGroupHeader.setText(currentGroup);
+      isFirstInGroup = true;
     } else {
-        Device prevDevice = devicesList.get(groupPosition - 1);
-        String prevGroup = prevDevice.groupName == null ? "默认分组" : prevDevice.groupName;
-        if (!currentGroup.equals(prevGroup)) {
-            devicesItemBinding.tvGroupHeader.setVisibility(View.VISIBLE);
-            devicesItemBinding.tvGroupHeader.setText(currentGroup);
-        } else {
-            devicesItemBinding.tvGroupHeader.setVisibility(View.GONE);
-        }
+      Device prevDevice = devicesList.get(groupPosition - 1);
+      String prevGroup = prevDevice.groupName == null ? "默认分组" : prevDevice.groupName;
+      if (!currentGroup.equals(prevGroup)) {
+        isFirstInGroup = true;
+      }
     }
-    // 设置展开图标
+
+    if (isFirstInGroup) {
+      devicesItemBinding.tvGroupHeader.setVisibility(View.VISIBLE);
+      // 根据折叠状态显示不同文字
+      String stateIndicator = collapsedGroups.contains(currentGroup) ? " (点击展开 +)" : " (点击收起 -)";
+      devicesItemBinding.tvGroupHeader.setText(currentGroup + stateIndicator);
+      
+      // 点击分组标题切换折叠状态
+      devicesItemBinding.tvGroupHeader.setOnClickListener(v -> {
+        if (collapsedGroups.contains(currentGroup)) {
+          collapsedGroups.remove(currentGroup);
+        } else {
+          collapsedGroups.add(currentGroup);
+        }
+        update(); // 触发数据重新过滤
+      });
+    } else {
+      devicesItemBinding.tvGroupHeader.setVisibility(View.GONE);
+    }
+    // ----------------------------
+
     devicesItemBinding.deviceExpand.setRotation(isExpanded ? 270 : 180);
-    // 设置卡片值
     if (device.isLinkDevice()) {
       if (device.connection == 1)
         devicesItemBinding.deviceIcon.setImageResource(R.drawable.link_can_connect);
@@ -150,28 +167,26 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
       devicesItemBinding.deviceIcon.setImageResource(R.drawable.wifi_can_connect);
     else
       devicesItemBinding.deviceIcon.setImageResource(R.drawable.wifi_can_not_connect);
+    
     devicesItemBinding.deviceName.setText(device.name);
-    // 单击事件
+    
     devicesItemBinding.getRoot().setOnClickListener(v -> {
       if (expandableListView.isGroupExpanded(groupPosition))
         expandableListView.collapseGroup(groupPosition);
       else
         expandableListView.expandGroup(groupPosition);
     });
-    // 长按事件
+    
     devicesItemBinding.getRoot().setOnLongClickListener(v -> {
       onLongClickCard(device);
       return true;
     });
   }
 
-  // 创建子View
   private void setChildView(View view, Device device) {
     ItemDevicesItemDetailBinding devicesItemDetailBinding = (ItemDevicesItemDetailBinding) view.getTag();
-    // 设置卡片值
     devicesItemDetailBinding.isAudio.setChecked(device.isAudio);
     devicesItemDetailBinding.defaultFull.setChecked(device.defaultFull);
-    // 单击事件
     devicesItemDetailBinding.isAudio.setOnCheckedChangeListener((buttonView, isChecked) -> {
       device.isAudio = isChecked;
       AppData.dbHelper.update(device);
@@ -188,18 +203,16 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
     devicesItemDetailBinding.createDisplay.setOnClickListener(v -> startDevice(device, 1));
   }
 
-  // 检查连接
   private final Object checkingConnection = new Object();
   private Thread checkingConnectionThread;
   public ExecutorService checkConnectionExecutor;
+
   private void checkConnection(Device device) {
     device.connection = 0;
-
     if (checkConnectionExecutor != null && checkConnectionExecutor.isShutdown() && checkingConnectionThread != null) {
       try {
         checkingConnectionThread.join();
-      } catch (Exception ignored) {
-      }
+      } catch (Exception ignored) {}
     }
 
     if (checkConnectionExecutor == null)
@@ -222,8 +235,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
           AppData.uiHandler.post(() -> startDefault(AppData.setting.getTryStartDefaultInAppTransfer() ? 1 : 0));
           startedDefault = true;
         }
-      } catch (InterruptedException ignored) {
-      }
+      } catch (InterruptedException ignored) {}
     });
     checkingConnectionThread.start();
 
@@ -233,8 +245,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
           if (device.isLinkDevice()) {
             Adb adb = new Adb(device.uuid, linkDevices.get(device.uuid), AppData.keyPair);
             Adb.adbMap.put(device.uuid, adb);
-          }
-          else {
+          } else {
             new Adb(device.address, AppData.keyPair);
             Adb adb = new Adb(device.uuid, device.address, AppData.keyPair);
             Adb.adbMap.put(device.uuid, adb);
@@ -244,23 +255,25 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
           checkingConnection.wait();
         }
         if (device.connection == 0) device.connection = 1;
+        
+        // --- 【修改：删除自动展开代码】 ---
+        /*
+        if (device.connection == 1) {
+            // 已删除自动展开逻辑
+        }
+        */
+        // ------------------------------
+        
       } catch (Exception e) {
         device.connection = 2;
         L.log(device.uuid, e);
-        for (Device d : devicesList) {
-          if (d.uuid.equals(device.uuid)) {
-            AppData.uiHandler.post(() -> expandableListView.collapseGroup(devicesList.indexOf(d)));
-          }
-        }
       }
     });
   }
 
-  // 卡片长按事件
   private void onLongClickCard(Device device) {
     ItemSetDeviceBinding itemSetDeviceBinding = ItemSetDeviceBinding.inflate(LayoutInflater.from(context));
     Dialog dialog = PublicTools.createDialog(context, true, itemSetDeviceBinding.getRoot());
-    // 有线设备
     if (device.isLinkDevice()) {
       itemSetDeviceBinding.buttonStartWireless.setVisibility(View.VISIBLE);
       itemSetDeviceBinding.buttonStartWireless.setOnClickListener(v -> {
@@ -307,25 +320,36 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
 
   private void queryDevices() {
     ArrayList<Device> rawDevices = AppData.dbHelper.getAll();
-    ArrayList<Device> tmp1 = new ArrayList<>();
-    ArrayList<Device> tmp2 = new ArrayList<>();
-    for (Device device : rawDevices) {
-      if (device.isLinkDevice() && linkDevices.containsKey(device.uuid)) tmp1.add(device);
-      else if (device.isNormalDevice()) tmp2.add(device);
-    }
-    devicesList.clear();
-    devicesList.addAll(tmp1);
-    devicesList.addAll(tmp2);
-      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-        devicesList.sort((o1, o2) -> {
-            String g1 = o1.groupName == null ? "默认分组" : o1.groupName;
-            String g2 = o2.groupName == null ? "默认分组" : o2.groupName;
-            return g1.compareTo(g2);
-        });
+    
+    // 1. 按分组名称排序
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+      rawDevices.sort((o1, o2) -> {
+        String g1 = o1.groupName == null ? "默认分组" : o1.groupName;
+        String g2 = o2.groupName == null ? "默认分组" : o2.groupName;
+        return g1.compareTo(g2);
+      });
     }
 
+    devicesList.clear();
+    String lastGroup = null;
+
+    // 2. 数据展平与过滤
+    for (Device device : rawDevices) {
+      String currentGroup = device.groupName == null ? "默认分组" : device.groupName;
+      
+      // 每组的第一个设备必须添加，因为它承载了 tvGroupHeader 的显示
+      if (lastGroup == null || !currentGroup.equals(lastGroup)) {
+        devicesList.add(device);
+        lastGroup = currentGroup;
+      } 
+      // 如果该组没有被标记为折叠，则添加该组后续的设备
+      else if (!collapsedGroups.contains(currentGroup)) {
+        devicesList.add(device);
+      }
+    }
+    
     if (!startedDefault && devicesList.isEmpty()) startedDefault = true;
-}
+  }
 
   public static void startByUUID(String uuid, int mode) {
     for (Device device : devicesList) {
@@ -341,7 +365,6 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
     } else new Client(device, null, mode);
   }
 
-  // 启动默认设备
   public static void startDefault(int mode) {
     boolean started = false;
     for (Device device : devicesList) {
@@ -351,7 +374,6 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
         if (AppData.setting.getAlwaysFullMode()) break;
       }
     }
-    // 返回桌面
     if (started && !AppData.setting.getAlwaysFullMode() && AppData.setting.getAutoBackOnStartDefault()) {
       Intent home = new Intent(Intent.ACTION_MAIN);
       home.addCategory(Intent.CATEGORY_HOME);
