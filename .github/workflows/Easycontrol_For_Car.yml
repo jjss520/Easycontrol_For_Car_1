@@ -20,14 +20,17 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
 
     - name: Build the app
-      working-directory: ./easycontrol
+      # 提示：确保你的项目根目录下确实有 easycontrol 这个文件夹
+      working-directory: ./easycontrol 
       run: |
         chmod +x gradlew
         ./gradlew :server:copyRelease --stacktrace
         ./gradlew :app:assembleDebug --stacktrace
         
     - name: Upload APK
-      uses: actions/upload-artifact@v2
+      # 修改点：从 v2 升级到 v4 以修复自动化失败的问题
+      uses: actions/upload-artifact@v4 
       with:
         name: my-build-apk
+        # 提示：请确保路径与 build 任务生成的输出路径一致
         path: ./easycontrol/app/build/outputs/apk/debug/*.apk
