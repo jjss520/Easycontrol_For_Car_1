@@ -41,7 +41,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   private final ExpandableListView expandableListView;
   public static boolean startedDefault = false;
 
-  // 【新增】记录被折叠的分组名称
+  [cite_start]// 记录被折叠的分组名称 [cite: 140, 143]
   private final Set<String> collapsedGroups = new HashSet<>();
 
   public DeviceListAdapter(Context c, ExpandableListView expandableListView) {
@@ -118,10 +118,12 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   private void setView(View view, Device device, boolean isExpanded, int groupPosition) {
     ItemDevicesItemBinding devicesItemBinding = (ItemDevicesItemBinding) view.getTag();
     
-    // --- 【修改：分组显示逻辑】 ---
+    [cite_start]// 1. 获取分组状态逻辑 [cite: 143]
     String currentGroup = device.groupName == null ? "默认分组" : device.groupName;
-    boolean isFirstInGroup = false;
+    boolean isCollapsed = collapsedGroups.contains(currentGroup);
     
+    // 2. 判断是否为分组的第一项
+    boolean isFirstInGroup = false;
     if (groupPosition == 0) {
       isFirstInGroup = true;
     } else {
@@ -132,26 +134,32 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
       }
     }
 
+    [cite_start]// 3. 处理分组标题显示与点击折叠 [cite: 143]
     if (isFirstInGroup) {
       devicesItemBinding.tvGroupHeader.setVisibility(View.VISIBLE);
-      // 根据折叠状态显示不同文字
-      String stateIndicator = collapsedGroups.contains(currentGroup) ? " (点击展开 +)" : " (点击收起 -)";
+      String stateIndicator = isCollapsed ? " (点击展开 +)" : " (点击收起 -)";
       devicesItemBinding.tvGroupHeader.setText(currentGroup + stateIndicator);
       
-      // 点击分组标题切换折叠状态
       devicesItemBinding.tvGroupHeader.setOnClickListener(v -> {
-        if (collapsedGroups.contains(currentGroup)) {
+        if (isCollapsed) {
           collapsedGroups.remove(currentGroup);
         } else {
           collapsedGroups.add(currentGroup);
         }
-        update(); // 触发数据重新过滤
+        [cite_start]update(); // 重新过滤数据 [cite: 152]
       });
     } else {
       devicesItemBinding.tvGroupHeader.setVisibility(View.GONE);
     }
-    // ----------------------------
 
+    [cite_start]// 4. 处理收起后的视觉隐藏：如果已收起且是首项，则隐藏下方的设备内容 [cite: 143]
+    if (isCollapsed && isFirstInGroup) {
+      devicesItemBinding.deviceItemContent.setVisibility(View.GONE);
+    } else {
+      devicesItemBinding.deviceItemContent.setVisibility(View.VISIBLE);
+    }
+
+    // 5. 原有设置逻辑
     devicesItemBinding.deviceExpand.setRotation(isExpanded ? 270 : 180);
     if (device.isLinkDevice()) {
       if (device.connection == 1)
@@ -255,15 +263,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
           checkingConnection.wait();
         }
         if (device.connection == 0) device.connection = 1;
-        
-        // --- 【修改：删除自动展开代码】 ---
-        /*
-        if (device.connection == 1) {
-            // 已删除自动展开逻辑
-        }
-        */
-        // ------------------------------
-        
+        // 已删除连接成功后自动展开详情的逻辑
       } catch (Exception e) {
         device.connection = 2;
         L.log(device.uuid, e);
@@ -321,7 +321,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   private void queryDevices() {
     ArrayList<Device> rawDevices = AppData.dbHelper.getAll();
     
-    // 1. 按分组名称排序
+    [cite_start]// 按分组名称排序 [cite: 143]
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
       rawDevices.sort((o1, o2) -> {
         String g1 = o1.groupName == null ? "默认分组" : o1.groupName;
@@ -333,16 +333,16 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
     devicesList.clear();
     String lastGroup = null;
 
-    // 2. 数据展平与过滤
+    [cite_start]// 根据折叠状态过滤显示的列表数据 [cite: 143]
     for (Device device : rawDevices) {
       String currentGroup = device.groupName == null ? "默认分组" : device.groupName;
       
-      // 每组的第一个设备必须添加，因为它承载了 tvGroupHeader 的显示
+      // 每组首个设备必须添加，以便作为标题宿主
       if (lastGroup == null || !currentGroup.equals(lastGroup)) {
         devicesList.add(device);
         lastGroup = currentGroup;
       } 
-      // 如果该组没有被标记为折叠，则添加该组后续的设备
+      // 如果该组未折叠，则添加后续设备
       else if (!collapsedGroups.contains(currentGroup)) {
         devicesList.add(device);
       }
