@@ -41,7 +41,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   private final ExpandableListView expandableListView;
   public static boolean startedDefault = false;
 
-  [cite_start]// 记录被折叠的分组名称 [cite: 140, 143]
+  // 记录被折叠的分组名称
   private final Set<String> collapsedGroups = new HashSet<>();
 
   public DeviceListAdapter(Context c, ExpandableListView expandableListView) {
@@ -118,7 +118,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   private void setView(View view, Device device, boolean isExpanded, int groupPosition) {
     ItemDevicesItemBinding devicesItemBinding = (ItemDevicesItemBinding) view.getTag();
     
-    [cite_start]// 1. 获取分组状态逻辑 [cite: 143]
+    // 1. 获取分组状态逻辑
     String currentGroup = device.groupName == null ? "默认分组" : device.groupName;
     boolean isCollapsed = collapsedGroups.contains(currentGroup);
     
@@ -134,7 +134,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
       }
     }
 
-    [cite_start]// 3. 处理分组标题显示与点击折叠 [cite: 143]
+    // 3. 处理分组标题显示与点击折叠
     if (isFirstInGroup) {
       devicesItemBinding.tvGroupHeader.setVisibility(View.VISIBLE);
       String stateIndicator = isCollapsed ? " (点击展开 +)" : " (点击收起 -)";
@@ -146,20 +146,19 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
         } else {
           collapsedGroups.add(currentGroup);
         }
-        [cite_start]update(); // 重新过滤数据 [cite: 152]
+        update(); // 重新过滤数据
       });
     } else {
       devicesItemBinding.tvGroupHeader.setVisibility(View.GONE);
     }
 
-    [cite_start]// 4. 处理收起后的视觉隐藏：如果已收起且是首项，则隐藏下方的设备内容 [cite: 143]
+    // 4. 处理收起后的视觉隐藏：如果已收起且是首项，则隐藏下方的设备内容
     if (isCollapsed && isFirstInGroup) {
       devicesItemBinding.deviceItemContent.setVisibility(View.GONE);
     } else {
       devicesItemBinding.deviceItemContent.setVisibility(View.VISIBLE);
     }
 
-    // 5. 原有设置逻辑
     devicesItemBinding.deviceExpand.setRotation(isExpanded ? 270 : 180);
     if (device.isLinkDevice()) {
       if (device.connection == 1)
@@ -263,7 +262,6 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
           checkingConnection.wait();
         }
         if (device.connection == 0) device.connection = 1;
-        // 已删除连接成功后自动展开详情的逻辑
       } catch (Exception e) {
         device.connection = 2;
         L.log(device.uuid, e);
@@ -321,7 +319,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
   private void queryDevices() {
     ArrayList<Device> rawDevices = AppData.dbHelper.getAll();
     
-    [cite_start]// 按分组名称排序 [cite: 143]
+    // 按分组名称排序
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
       rawDevices.sort((o1, o2) -> {
         String g1 = o1.groupName == null ? "默认分组" : o1.groupName;
@@ -333,7 +331,7 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
     devicesList.clear();
     String lastGroup = null;
 
-    [cite_start]// 根据折叠状态过滤显示的列表数据 [cite: 143]
+    // 根据折叠状态过滤显示的列表数据
     for (Device device : rawDevices) {
       String currentGroup = device.groupName == null ? "默认分组" : device.groupName;
       
