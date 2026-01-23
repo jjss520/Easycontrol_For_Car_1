@@ -306,8 +306,16 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
     devicesList.clear();
     devicesList.addAll(tmp1);
     devicesList.addAll(tmp2);
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+        devicesList.sort((o1, o2) -> {
+            String g1 = o1.groupName == null ? "默认分组" : o1.groupName;
+            String g2 = o2.groupName == null ? "默认分组" : o2.groupName;
+            return g1.compareTo(g2);
+        });
+    }
+
     if (!startedDefault && devicesList.isEmpty()) startedDefault = true;
-  }
+}
 
   public static void startByUUID(String uuid, int mode) {
     for (Device device : devicesList) {
