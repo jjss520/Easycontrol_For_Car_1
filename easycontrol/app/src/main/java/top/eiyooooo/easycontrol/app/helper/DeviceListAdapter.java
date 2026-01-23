@@ -244,13 +244,6 @@ public class DeviceListAdapter extends BaseExpandableListAdapter {
           checkingConnection.wait();
         }
         if (device.connection == 0) device.connection = 1;
-        if (device.connection == 1) {
-          for (Device d : devicesList) {
-            if (d.uuid.equals(device.uuid)) {
-              AppData.uiHandler.post(() -> expandableListView.expandGroup(devicesList.indexOf(d)));
-            }
-          }
-        }
       } catch (Exception e) {
         device.connection = 2;
         L.log(device.uuid, e);
